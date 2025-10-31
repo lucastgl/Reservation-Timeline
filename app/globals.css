@@ -1,2 +1,39 @@
 @import "tailwindcss";
 
+/* Patrón rayado para reservas canceladas */
+.bg-striped {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.1) 0,
+    rgba(0, 0, 0, 0.1) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+}
+
+/* Estilos para el modal de HeroUI */
+[data-slot="wrapper"] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 100 !important;
+}
+
+[data-slot="backdrop"] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 99 !important;
+}
+
+/* Asegurar que el body no scroll cuando el modal está abierto */
+body:has([data-slot="wrapper"]) {
+  overflow: hidden;
+}

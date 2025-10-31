@@ -1,10 +1,13 @@
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
+
 export type Task = {
-    id: string;
-    title: string;
-    description: string;
-    status: "TO_DO" | "IN_PROGRESS" | "DONE";
+  id: string;
+  status: TaskStatus;
+  title: string;
+  description: string;
 };
-export type Columns = {
-    id: "TO_DO" | "IN_PROGRESS" | "DONE";
-    title: string;
+
+export type Column = {
+  id: TaskStatus;
+  title: string;
 };
