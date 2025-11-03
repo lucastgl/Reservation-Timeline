@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import type { Reservation } from "../Interfaces/interfaces";
+import { debounce } from "./reservations/ReservationGrid/utils/performanceUtils";
 
 // ============================================================================
 // INTERFACES
@@ -21,6 +22,8 @@ interface ReservationToolbarProps {
     onZoomChange: (zoom: number) => void;
     activeFiltersCount: number;
     onClearFilters: () => void;
+    allowPastReservations: boolean;
+    onTogglePastReservations: (allow: boolean) => void;
 }
 
 // ============================================================================
@@ -62,10 +65,15 @@ export default function ReservationToolbar({
     onZoomChange,
     activeFiltersCount,
     onClearFilters,
+    allowPastReservations,
+    onTogglePastReservations,
 }: ReservationToolbarProps) {
     
     const [showSectorMenu, setShowSectorMenu] = useState(false);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
+    
+    // Estado para la fecha formateada (solo en cliente para evitar hydration mismatch)
+    const [formattedDate, setFormattedDate] = useState<string>("");
 
     // ========================================================================
     // HANDLERS
@@ -136,6 +144,13 @@ export default function ReservationToolbar({
         return date.toISOString().split("T")[0];
     };
 
+    // Actualizar fecha formateada solo en el cliente (después del mount)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setFormattedDate(formatDate(selectedDate));
+        }
+    }, [selectedDate]);
+
     // ========================================================================
     // RENDER
     // ========================================================================
@@ -164,7 +179,7 @@ export default function ReservationToolbar({
                                 className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                             <span className="text-sm font-semibold text-gray-700 capitalize">
-                                {formatDate(selectedDate)}
+                                {formattedDate || formatDateInput(selectedDate)}
                             </span>
                         </div>
 
@@ -220,7 +235,9 @@ export default function ReservationToolbar({
                                 </svg>
                             </div>
                             <input
-                                type="text"
+                                type="search"
+                                name="toolbar-search-reservations"
+                                autoComplete="off"
                                 placeholder="Buscar por nombre o teléfono..."
                                 value={searchQuery}
                                 onChange={(e) => onSearchChange(e.target.value)}
@@ -370,6 +387,24 @@ export default function ReservationToolbar({
                                 {option.label}
                             </button>
                         ))}
+                    </div>
+
+                    {/* Switch para permitir edición retroactiva */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-300 rounded-lg ml-3">
+                        <label className="flex items-center gap-2 cursor-pointer" title="Permite crear y editar reservas en horarios pasados">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    checked={allowPastReservations}
+                                    onChange={(e) => onTogglePastReservations(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                {allowPastReservations ? '🔓' : '🔒'} Retroactiva
+                            </span>
+                        </label>
                     </div>
                 </div>
             </div>

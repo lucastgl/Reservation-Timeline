@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Modal,
   ModalContent,
@@ -8,7 +8,8 @@ import {
   ModalBody,
   ModalFooter,
 } from "@heroui/modal";
-import type { Reservation } from "../Interfaces/interfaces";
+import type { Reservation, Table } from "../Interfaces/interfaces";
+import TableRecommendationPanel from "./TableRecommendationPanel";
 
 // ============================================================================
 // INTERFACES
@@ -25,6 +26,8 @@ interface CreateReservationModalProps {
   defaultDuration: number; // minutos
   existingReservations: Reservation[]; // Para validar conflictos
   initialData?: Reservation; // Para modo edición
+  allTables?: Table[]; // Para el panel de recomendación
+  onSelectRecommendedTable?: (tableId: string, startTime: string) => void;
 }
 
 interface FormData {
@@ -93,9 +96,12 @@ export default function CreateReservationModal({
   defaultDuration,
   existingReservations,
   initialData,
+  allTables = [],
+  onSelectRecommendedTable,
 }: CreateReservationModalProps) {
   
   const isEditMode = !!initialData;
+  const [showRecommendations, setShowRecommendations] = useState(!isEditMode);
   // ========================================================================
   // ESTADO
   // ========================================================================
@@ -158,7 +164,7 @@ export default function CreateReservationModal({
   /**
    * Verifica si hay conflicto con reservas existentes
    */
-  const checkConflicts = (start: string, duration: number): boolean => {
+  const checkConflicts = useCallback((start: string, duration: number): boolean => {
     const startMs = new Date(start).getTime();
     const endMs = startMs + duration * 60 * 1000;
 
@@ -175,7 +181,7 @@ export default function CreateReservationModal({
         (startMs <= resStartMs && endMs >= resEndMs)
       );
     });
-  };
+  }, [existingReservations, tableId]);
 
   /**
    * Valida todos los campos del formulario
@@ -211,11 +217,31 @@ export default function CreateReservationModal({
       newErrors.durationMinutes = `Duración máxima: ${MAX_DURATION} min (6 horas)`;
     }
 
+    // Validar que la hora no esté en el pasado
+    const now = new Date();
+    const reservationTime = new Date(startTime);
+    if (reservationTime < now) {
+      newErrors.durationMinutes = "No se puede crear una reserva en el pasado";
+    }
+
+    // Validar horario de servicio (11:00 - 24:00)
+    const startHour = reservationTime.getHours() + reservationTime.getMinutes() / 60;
+    const endTime = new Date(reservationTime.getTime() + formData.durationMinutes * 60 * 1000);
+    const endHour = endTime.getHours() + endTime.getMinutes() / 60;
+    
+    if (startHour < 11) {
+      newErrors.durationMinutes = "El horario de servicio inicia a las 11:00";
+    } else if (endHour > 24) {
+      newErrors.durationMinutes = "El horario de servicio termina a las 24:00";
+    }
+
     // Conflictos
-    const conflict = checkConflicts(startTime, formData.durationMinutes);
-    setHasConflict(conflict);
-    if (conflict) {
-      newErrors.durationMinutes = "Conflicto con otra reserva";
+    if (!newErrors.durationMinutes) {
+      const conflict = checkConflicts(startTime, formData.durationMinutes);
+      setHasConflict(conflict);
+      if (conflict) {
+        newErrors.durationMinutes = "Conflicto con otra reserva";
+      }
     }
 
     setErrors(newErrors);
@@ -263,6 +289,40 @@ export default function CreateReservationModal({
     onSave(reservationData);
     onClose();
   };
+
+  // ========================================================================
+  // VALIDACIÓN EN TIEMPO REAL (MEMOIZADA)
+  // ========================================================================
+
+  /**
+   * Calcula si hay conflictos en tiempo real sin causar renders en cascada
+   */
+  const computedHasConflict = useMemo(() => {
+    // Solo validar si el modal está abierto
+    if (!isOpen) return false;
+
+    const conflict = checkConflicts(startTime, formData.durationMinutes);
+
+    // Validar tiempo pasado
+    const now = new Date();
+    const reservationTime = new Date(startTime);
+    const isPast = reservationTime < now;
+
+    // Validar horario de servicio
+    const startHour = reservationTime.getHours() + reservationTime.getMinutes() / 60;
+    const endTime = new Date(reservationTime.getTime() + formData.durationMinutes * 60 * 1000);
+    const endHour = endTime.getHours() + endTime.getMinutes() / 60;
+    const outsideHours = startHour < 11 || endHour > 24;
+
+    return conflict || isPast || outsideHours;
+  }, [formData.durationMinutes, startTime, isOpen, checkConflicts]);
+
+  /**
+   * Actualizar estado de conflicto cuando cambia el valor computado
+   */
+  useEffect(() => {
+    setHasConflict(computedHasConflict);
+  }, [computedHasConflict]);
 
   // ========================================================================
   // HELPERS
@@ -357,6 +417,43 @@ export default function CreateReservationModal({
             </div>
           )} 
 
+          {/* PANEL DE RECOMENDACIONES (BONUS 1) */}
+          {!isEditMode && allTables.length > 0 && formData.partySize > 0 && showRecommendations && (
+            <div className="mb-6">
+              <TableRecommendationPanel
+                tables={allTables}
+                reservations={existingReservations}
+                partySize={formData.partySize}
+                startTime={startTime}
+                duration={formData.durationMinutes}
+                customerPhone={formData.customerPhone}
+                onSelectTable={(selectedTableId, selectedTime) => {
+                  if (onSelectRecommendedTable) {
+                    onSelectRecommendedTable(selectedTableId, selectedTime);
+                  }
+                  setShowRecommendations(false);
+                }}
+              />
+              <button
+                onClick={() => setShowRecommendations(false)}
+                className="mt-3 text-sm text-gray-600 hover:text-gray-800 underline"
+              >
+                Ocultar recomendaciones
+              </button>
+            </div>
+          )}
+
+          {!showRecommendations && !isEditMode && allTables.length > 0 && (
+            <button
+              onClick={() => setShowRecommendations(true)}
+              className="mb-4 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-.5a1.5 1.5 0 000 3h.5a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-.5a1.5 1.5 0 00-3 0v.5a1 1 0 01-1 1H6a1 1 0 01-1-1v-3a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H4a1 1 0 001-1V6a1 1 0 011-1h3a1 1 0 001-1v-.5z" />
+              </svg>
+              Ver recomendaciones de mesa con IA
+            </button>
+          )}
 
           <div className="flex gap-6">
             {/* BLOQUE IZQUIERDO - Información Principal */}
@@ -372,6 +469,8 @@ export default function CreateReservationModal({
                 </label>
                 <input
                   type="text"
+                  name="reservation-customer-name"
+                  autoComplete="off"
                   value={formData.customerName}
                   onChange={(e) => handleChange("customerName", e.target.value)}
                   className={`w-full px-4 py-2.5 border rounded-lg text-sm transition-colors
@@ -409,6 +508,8 @@ export default function CreateReservationModal({
                 </label>
                 <input
                   type="tel"
+                  name="reservation-customer-phone"
+                  autoComplete="off"
                   value={formData.customerPhone}
                   onChange={(e) =>
                     handleChange("customerPhone", e.target.value)

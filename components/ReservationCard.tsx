@@ -4,7 +4,7 @@ import React, { memo, useState, useCallback, useEffect } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { Reservation } from "../Interfaces/interfaces";
-import { UsersIcon } from "../public/icons";
+import { UsersIcon } from "./icons";
 
 // ============================================================================
 // CONSTANTES DE ESTILO POR ESTADO
