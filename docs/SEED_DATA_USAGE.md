@@ -208,5 +208,5 @@ const reservations = generateRandomReservations(100);
 
 ---
 
-**Última actualización**: 3 de Noviembre, 2025
+-- 
 

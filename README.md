@@ -895,4 +895,3 @@ Este proyecto está bajo la licencia MIT. Ver `LICENSE` para más información.
 
 **Hecho con ❤️ y mucho ☕**
 
-*Última actualización: 3 de Noviembre, 2025*

@@ -8,17 +8,9 @@
 
 ## 🎯 ¿Por Qué Zustand?
 
-### Problemas Antes de Zustand
+Zustand es una librería de gestión de estado minimalista y poderosa que proporciona:
 
-❌ **Prop Drilling Excesivo**: Pasar props a través de 4-5 niveles de componentes  
-❌ **Re-renders Innecesarios**: Todo el árbol se renderizaba al cambiar cualquier estado  
-❌ **Código Duplicado**: La misma lógica repetida en múltiples componentes  
-❌ **Estado Difícil de Sincronizar**: Múltiples fuentes de verdad  
-❌ **Performance Degradada**: Sin optimización de actualizaciones
-
-### Beneficios con Zustand
-
-✅ **Estado Centralizado**: Una sola fuente de verdad  
+✅ **Estado Centralizado**: Una sola fuente de verdad para toda la aplicación  
 ✅ **Cero Prop Drilling**: Acceso directo desde cualquier componente  
 ✅ **Selectores Eficientes**: Solo re-render cuando cambia lo que usas  
 ✅ **DevTools Integradas**: Debugging avanzado con Redux DevTools  
@@ -587,5 +579,5 @@ describe('useReservationStore', () => {
 **Estado**: ✅ Stores creados y documentados  
 **Próximo**: Refactorizar componentes para usar stores
 
-*Última actualización: 3 de Noviembre, 2025*
+*--: 3 de Noviembre, 2025*
 

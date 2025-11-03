@@ -30,8 +30,9 @@ export function useReservations(initialReservations: Reservation[] = []) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Solo ejecutar una vez al montar
   
-  // Usar reservas del store en lugar de estado local
-  const reservations = storeReservations.length > 0 ? storeReservations : initialReservations;
+  // SIEMPRE usar reservas del store (son la fuente de verdad)
+  // El store se mantiene sincronizado con todas las operaciones
+  const reservations = storeReservations;
 
   // Estado del modal de creación
   const [modalState, setModalState] = useState<ModalState>({

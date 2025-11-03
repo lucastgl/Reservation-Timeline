@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { WaitlistEntry } from '../Interfaces/waitlistInterfaces';
-import type { Table, Reservation } from '../Interfaces/interfaces';
+import type { Table, Reservation, Sector } from '../Interfaces/interfaces';
 import {
   calculateWaitTimes,
   findPromotionCandidates,
@@ -17,11 +17,12 @@ import {
   findAlternativeTimeSlots,
   type TimeSlotRecommendation,
 } from './reservations/ReservationGrid/utils/tableRecommendationUtils';
+import { findConflict } from './reservations/ReservationGrid/utils/validationUtils';
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter, useDisclosure } from '@heroui/modal';
 import { Button } from '@heroui/button';
 
 // 🏪 Importar stores de Zustand
-import { useReservationStore, useWaitlistStore, useUIStore } from '../stores';
+import { useReservationStore, useWaitlistStore, useUIStore, useFilterStore } from '../stores';
 
 // ============================================================================
 // INTERFACES
@@ -29,6 +30,8 @@ import { useReservationStore, useWaitlistStore, useUIStore } from '../stores';
 
 interface WaitlistPanelProps {
   tables: Table[];
+  sectors?: Sector[];
+  selectedDate?: Date; // Fecha seleccionada en el grid para normalizar las reservas
   // onConvertToReservation ya no se usa, el store maneja todo directamente
   onUpdateEntry: (entryId: string, updates: Partial<WaitlistEntry>) => void;
 }
@@ -39,6 +42,8 @@ interface WaitlistPanelProps {
 
 export default function WaitlistPanel({
   tables,
+  sectors = [],
+  selectedDate: propSelectedDate,
   onUpdateEntry,
 }: WaitlistPanelProps) {
   // 🏪 Obtener datos desde Zustand stores (actualizados en tiempo real)
@@ -49,6 +54,10 @@ export default function WaitlistPanel({
   const addToWaitlistStore = useWaitlistStore((state) => state.addToWaitlist);
   const clearWaitlistStore = useWaitlistStore((state) => state.clearWaitlist);
   const addReservation = useReservationStore((state) => state.addReservation);
+  
+  // Obtener fecha seleccionada del store global o usar la prop
+  const storeSelectedDate = useFilterStore((state) => state.selectedDate);
+  const selectedDate = propSelectedDate || storeSelectedDate || new Date();
   
   // Estado local para formulario de agregar
   const [showAddForm, setShowAddForm] = useState(false);
@@ -70,9 +79,9 @@ export default function WaitlistPanel({
   
   // 🏪 Calcular valores con useMemo en lugar de useEffect + setState
   const sortedWaitlist = useMemo(() => {
-    const withWaitTimes = calculateWaitTimes(waitlist, tables, reservations);
+    const withWaitTimes = calculateWaitTimes(waitlist, tables, reservations, sectors);
     return sortWaitlistByPriority(withWaitTimes);
-  }, [waitlist, tables, reservations]);
+  }, [waitlist, tables, reservations, sectors]);
 
   const stats = useMemo(() => {
     return calculateWaitlistStats(waitlist);
@@ -88,7 +97,8 @@ export default function WaitlistPanel({
         waitlist,
         table,
         now,
-        reservations
+        reservations,
+        sectors
       );
       
       if (candidates.length > 0) {
@@ -97,7 +107,7 @@ export default function WaitlistPanel({
     });
 
     return suggestions;
-  }, [waitlist, tables, reservations]);
+  }, [waitlist, tables, reservations, sectors]);
 
   // ========================================================================
   // HANDLERS
@@ -167,10 +177,40 @@ export default function WaitlistPanel({
     // Helper para generar ID único
     const generateId = () => `res-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     
+    // Helper para normalizar la fecha/hora al día seleccionado en el grid
+    // Preserva la hora de la entrada pero ajusta el día al día seleccionado en el grid
+    const normalizeDateTime = (isoString: string): string => {
+      const sourceDate = new Date(isoString);
+      // Usar la fecha seleccionada en el grid, o hoy por defecto
+      const target = selectedDate || new Date();
+      
+      // Preservar la hora (horas y minutos) de la entrada original
+      const hours = sourceDate.getUTCHours();
+      const minutes = sourceDate.getUTCMinutes();
+      
+      // Crear nueva fecha con el día objetivo pero manteniendo la hora
+      const normalized = new Date(target);
+      normalized.setUTCHours(hours, minutes, 0, 0);
+      
+      return normalized.toISOString();
+    };
+    
     // Si se proporciona tableId y startTime, convertir directamente
     if (tableId && startTime) {
-      const partialReservation = convertToReservation(entry, tableId, startTime);
-      const endTimeValue = partialReservation.endTime || new Date(new Date(startTime).getTime() + 90 * 60 * 1000).toISOString();
+      const duration = 90; // Duración promedio
+      
+      // Normalizar la fecha/hora al día seleccionado en el grid (preservar hora)
+      const normalizedStartTime = normalizeDateTime(startTime);
+      
+      // VALIDAR CONFLICTO antes de crear la reserva
+      const conflict = findConflict(reservations, tableId, normalizedStartTime, duration);
+      if (conflict) {
+        alert('❌ No se puede crear la reserva: hay un conflicto con una reserva existente en esa mesa y horario.');
+        return;
+      }
+      
+      const partialReservation = convertToReservation(entry, tableId, normalizedStartTime);
+      const endTimeValue = partialReservation.endTime || new Date(new Date(normalizedStartTime).getTime() + duration * 60 * 1000).toISOString();
       const now = new Date().toISOString();
       
       const newReservation: Reservation = {
@@ -178,9 +218,9 @@ export default function WaitlistPanel({
         tableId,
         customer: entry.customer,
         partySize: entry.partySize,
-        startTime,
+        startTime: normalizedStartTime,
         endTime: endTimeValue,
-        durationMinutes: partialReservation.durationMinutes || 90,
+        durationMinutes: partialReservation.durationMinutes || duration,
         status: (partialReservation.status || 'CONFIRMED') as Reservation['status'],
         priority: (entry.priority === 'VIP' ? 'VIP' : 'STANDARD') as Reservation['priority'],
         notes: partialReservation.notes || `Convertido de lista de espera`,
@@ -189,15 +229,21 @@ export default function WaitlistPanel({
       };
       
       console.log('✅ Creando reserva desde waitlist (directa):', newReservation);
+      console.log('  - Hora original:', startTime);
+      console.log('  - Hora normalizada:', normalizedStartTime);
       addReservation(newReservation);
       onUpdateEntry(entry.id, { status: 'SEATED' });
+      alert(`✅ Reserva creada para ${entry.customer.name} en la mesa seleccionada`);
       return;
     }
 
     // Buscar mesa disponible en el horario preferido
     const preferredTime = entry.preferredTime;
     const duration = 90; // Duración promedio
-    const defaultStartTime = preferredTime;
+    
+    // Normalizar la fecha/hora al día seleccionado en el grid (preservar hora)
+    const normalizedPreferredTime = normalizeDateTime(preferredTime);
+    const defaultStartTime = normalizedPreferredTime;
 
     // 1. Buscar mesas disponibles en el horario preferido
     const recommendations = recommendTables(
@@ -206,35 +252,47 @@ export default function WaitlistPanel({
       entry.partySize,
       defaultStartTime,
       duration,
-      entry.preferredSector
+      entry.preferredSector,
+      sectors
     );
 
     // 2. Si hay disponibilidad exacta, usar la mejor opción
     if (recommendations.length > 0) {
       const bestTable = recommendations[0].table;
-      const partialReservation = convertToReservation(entry, bestTable.id, defaultStartTime);
-      const endTimeValue = partialReservation.endTime || new Date(new Date(defaultStartTime).getTime() + 90 * 60 * 1000).toISOString();
-      const now = new Date().toISOString();
       
-      const newReservation: Reservation = {
-        id: partialReservation.id || generateId(),
-        tableId: bestTable.id,
-        customer: entry.customer,
-        partySize: entry.partySize,
-        startTime: defaultStartTime,
-        endTime: endTimeValue,
-        durationMinutes: partialReservation.durationMinutes || 90,
-        status: (partialReservation.status || 'CONFIRMED') as Reservation['status'],
-        priority: (entry.priority === 'VIP' ? 'VIP' : 'STANDARD') as Reservation['priority'],
-        notes: partialReservation.notes || `Convertido de lista de espera`,
-        createdAt: partialReservation.createdAt || now,
-        updatedAt: partialReservation.updatedAt || now,
-      };
-      
-      console.log('✅ Creando reserva desde waitlist:', newReservation);
-      addReservation(newReservation);
-      onUpdateEntry(entry.id, { status: 'SEATED' });
-      return;
+      // VALIDAR CONFLICTO antes de crear la reserva (doble verificación)
+      const conflict = findConflict(reservations, bestTable.id, defaultStartTime, duration);
+      if (conflict) {
+        console.warn('⚠️ Conflicto detectado después de recomendación, buscando alternativas...');
+        // Continuar al flujo de alternativas
+      } else {
+        const partialReservation = convertToReservation(entry, bestTable.id, defaultStartTime);
+        const endTimeValue = partialReservation.endTime || new Date(new Date(defaultStartTime).getTime() + duration * 60 * 1000).toISOString();
+        const now = new Date().toISOString();
+        
+        const newReservation: Reservation = {
+          id: partialReservation.id || generateId(),
+          tableId: bestTable.id,
+          customer: entry.customer,
+          partySize: entry.partySize,
+          startTime: defaultStartTime,
+          endTime: endTimeValue,
+          durationMinutes: partialReservation.durationMinutes || duration,
+          status: (partialReservation.status || 'CONFIRMED') as Reservation['status'],
+          priority: (entry.priority === 'VIP' ? 'VIP' : 'STANDARD') as Reservation['priority'],
+          notes: partialReservation.notes || `Convertido de lista de espera`,
+          createdAt: partialReservation.createdAt || now,
+          updatedAt: partialReservation.updatedAt || now,
+        };
+        
+        console.log('✅ Creando reserva desde waitlist:', newReservation);
+        console.log('  - Hora preferida original:', entry.preferredTime);
+        console.log('  - Hora normalizada usada:', defaultStartTime);
+        addReservation(newReservation);
+        onUpdateEntry(entry.id, { status: 'SEATED' });
+        alert(`✅ Reserva creada para ${entry.customer.name} en ${bestTable.name}`);
+        return;
+      }
     }
 
     // 3. Si no hay disponibilidad exacta, buscar alternativas
@@ -270,13 +328,23 @@ export default function WaitlistPanel({
         reservations,
         entry.partySize,
         defaultStartTime,
-        duration
+        duration,
+        sector,
+        sectors
       );
 
       if (sectorRecommendations.length > 0) {
         const bestTable = sectorRecommendations[0].table;
+        
+        // VALIDAR CONFLICTO antes de crear la reserva
+        const conflict = findConflict(reservations, bestTable.id, defaultStartTime, duration);
+        if (conflict) {
+          console.warn(`⚠️ Conflicto en sector ${sector}, continuando búsqueda...`);
+          continue; // Intentar siguiente sector
+        }
+        
         const partialReservation = convertToReservation(entry, bestTable.id, defaultStartTime);
-        const endTimeValue = partialReservation.endTime || new Date(new Date(defaultStartTime).getTime() + 90 * 60 * 1000).toISOString();
+        const endTimeValue = partialReservation.endTime || new Date(new Date(defaultStartTime).getTime() + duration * 60 * 1000).toISOString();
         const now = new Date().toISOString();
         
         const newReservation: Reservation = {
@@ -286,7 +354,7 @@ export default function WaitlistPanel({
           partySize: entry.partySize,
           startTime: defaultStartTime,
           endTime: endTimeValue,
-          durationMinutes: partialReservation.durationMinutes || 90,
+          durationMinutes: partialReservation.durationMinutes || duration,
           status: (partialReservation.status || 'CONFIRMED') as Reservation['status'],
           priority: (entry.priority === 'VIP' ? 'VIP' : 'STANDARD') as Reservation['priority'],
           notes: partialReservation.notes || `Convertido de lista de espera`,
@@ -297,7 +365,7 @@ export default function WaitlistPanel({
         console.log('✅ Creando reserva desde waitlist (sector alternativo):', newReservation);
         addReservation(newReservation);
         onUpdateEntry(entry.id, { status: 'SEATED' });
-        alert(`✅ Reserva creada en ${sector} (sector alternativo)`);
+        alert(`✅ Reserva creada para ${entry.customer.name} en ${sector} (sector alternativo)`);
         return;
       }
     }
@@ -348,10 +416,22 @@ export default function WaitlistPanel({
   };
 
   const formatTime = (isoString: string) => {
-    return new Date(isoString).toLocaleTimeString('es-AR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    // Mostrar la hora exacta sin conversiones de zona horaria
+    const date = new Date(isoString);
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+  
+  const formatDateAndTime = (isoString: string): string => {
+    // Mostrar fecha y hora para debug
+    const date = new Date(isoString);
+    const year = date.getUTCFullYear();
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
   };
 
   const getStatusColor = (status: WaitlistEntry['status']) => {
@@ -508,6 +588,7 @@ export default function WaitlistPanel({
                   <div className="text-xs text-gray-600 space-y-1 mb-3">
                     <p>📞 {entry.customer.phone}</p>
                     <p>🕐 Hora preferida: {formatTime(entry.preferredTime)}</p>
+                    <p className="text-gray-400 text-[10px]">({formatDateAndTime(entry.preferredTime)})</p>
                     {entry.preferredSector && (
                       <p>📍 Sector: {entry.preferredSector}</p>
                     )}
@@ -668,8 +749,21 @@ export default function WaitlistPanel({
               
               <input
                 type="datetime-local"
-                value={formData.preferredTime.slice(0, 16)}
-                onChange={(e) => setFormData({ ...formData, preferredTime: new Date(e.target.value).toISOString() })}
+                value={formData.preferredTime ? new Date(formData.preferredTime).toISOString().slice(0, 16) : ''}
+                onChange={(e) => {
+                  // Preservar la hora exacta que el usuario ingresa sin cambios de zona horaria
+                  const localDateTime = e.target.value; // Formato: "YYYY-MM-DDTHH:mm"
+                  if (localDateTime) {
+                    // Crear una fecha usando la hora local ingresada
+                    const [datePart, timePart] = localDateTime.split('T');
+                    const [year, month, day] = datePart.split('-').map(Number);
+                    const [hours, minutes] = timePart.split(':').map(Number);
+                    
+                    // Crear fecha en UTC pero con la hora local que el usuario ingresó
+                    const userDateTime = new Date(Date.UTC(year, month - 1, day, hours, minutes));
+                    setFormData({ ...formData, preferredTime: userDateTime.toISOString() });
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
               

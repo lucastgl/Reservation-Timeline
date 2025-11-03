@@ -272,5 +272,5 @@ console.log('Filtered reservations:', filteredReservations);
 
 ---
 
-**Última actualización**: 3 de Noviembre, 2025
+-- 
 

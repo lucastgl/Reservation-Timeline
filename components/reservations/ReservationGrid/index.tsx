@@ -32,8 +32,11 @@ const timeSlots = generateTimeSlots();
 
 /**
  * Genera grupos de mesas por sector por defecto
+ * NOTA: Esta función solo se usa como fallback si no se pasan grupos explícitamente
+ * Los datos reales deben venir del seed data
  */
 function defaultGroups(): SectorGroup[] {
+  console.warn('⚠️ ReservationGrid usando grupos por defecto - esto no debería suceder en producción');
   return [
     {
       sector: "Interior",
@@ -74,6 +77,13 @@ export default function ReservationGrid({
   allowPastReservations = false,
   onTogglePastReservations,
 }: ReservationGridProps) {
+  // Debug: Verificar qué grupos se están recibiendo
+  useEffect(() => {
+    console.log('📊 ReservationGrid - Grupos recibidos:', groups);
+    console.log('   - Total sectores:', groups.length);
+    groups.forEach(g => console.log(`   - ${g.sector}: ${g.tables.length} mesas`, g.tables.map(t => t.id)));
+  }, [groups]);
+  
   // ========================================================================
   // HOOKS PERSONALIZADOS
   // ========================================================================

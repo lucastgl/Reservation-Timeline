@@ -212,5 +212,5 @@ Basados en [Heroicons](https://heroicons.com/) (MIT License).
 
 ---
 
-**Última actualización**: 3 de Noviembre, 2025
+-- 
 

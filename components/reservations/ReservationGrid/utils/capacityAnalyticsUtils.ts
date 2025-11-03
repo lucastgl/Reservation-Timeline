@@ -76,21 +76,27 @@ export function calculateHourlyCapacity(
     const totalCapacity = tables.reduce((sum, t) => sum + t.capacity.max, 0);
 
     // Contar mesas ocupadas en este slot
+    // Verificar si hay reservas ACTIVAS durante este slot (no solo que comiencen en él)
     for (const table of tables) {
-      const conflict = findConflict(
-        dayReservations,  // Usar reservas filtradas del día
-        table.id,
-        startTime,
-        15 // Duración de la franja (15 min)
-      );
+      // Buscar si hay alguna reserva activa en esta mesa durante este slot
+      const activeReservation = dayReservations.find(r => {
+        if (r.tableId !== table.id) return false;
+        
+        // Convertir a minutos desde medianoche para comparar
+        const reservationStart = new Date(r.startTime);
+        const reservationEnd = new Date(r.endTime);
+        const slotStartDate = new Date(date);
+        slotStartDate.setHours(Math.floor(timeSlot / 60), timeSlot % 60, 0, 0);
+        const slotEndDate = new Date(slotStartDate);
+        slotEndDate.setMinutes(slotEndDate.getMinutes() + 15); // Slot de 15 minutos
+        
+        // La reserva está activa si se solapa con el slot
+        return reservationStart < slotEndDate && reservationEnd > slotStartDate;
+      });
 
-      if (conflict) {
+      if (activeReservation) {
         occupiedCount++;
-        // Encontrar la reserva para obtener el party size
-        const reservation = dayReservations.find(r => r.id === conflict);
-        if (reservation) {
-          usedCapacity += reservation.partySize;
-        }
+        usedCapacity += activeReservation.partySize;
       }
     }
 

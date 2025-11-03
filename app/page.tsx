@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import ReservationGrid from "../components/reservations/ReservationGrid";
 import CapacityAnalyticsPanel from "../components/CapacityAnalyticsPanel";
 import WaitlistPanel from "../components/WaitlistPanel";
@@ -45,20 +45,42 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Usar seed data para mesas y sectores
+  // Usar seed data para mesas y sectores (memoizado)
   // Compatibilidad: convertir seedTables a formato con 'sector' para componentes legacy
-  const mockTables = seedTables.map(table => {
-    const sector = seedSectors.find(s => s.id === table.sectorId);
-    return {
-      id: table.id,
-      name: table.name,
-      sector: sector?.name || 'Unknown',
-      capacity: table.capacity,
-      // Campos adicionales para compatibilidad con tipos legacy
-      sectorId: table.sectorId,
-      sortOrder: table.sortOrder,
-    } as Table & { sector: string }; // Type assertion para compatibilidad
-  });
+  const mockTables = useMemo(() => {
+    return seedTables.map(table => {
+      const sector = seedSectors.find(s => s.id === table.sectorId);
+      return {
+        id: table.id,
+        name: table.name,
+        sector: sector?.name || 'Unknown',
+        capacity: table.capacity,
+        // Campos adicionales para compatibilidad con tipos legacy
+        sectorId: table.sectorId,
+        sortOrder: table.sortOrder,
+      } as Table & { sector: string }; // Type assertion para compatibilidad
+    });
+  }, []);
+
+  // Convertir seed data a formato SectorGroup para el grid (memoizado)
+  const sectorGroups = useMemo(() => {
+    const groups = seedSectors.map(sector => ({
+      sector: sector.name,
+      tables: seedTables
+        .filter(t => t.sectorId === sector.id)
+        .map(t => ({
+          id: t.id,
+          name: t.name,
+          sector: sector.name,
+        }))
+    }));
+    
+    console.log('🏗️ app/page.tsx - Grupos generados:', groups);
+    console.log('   - Total sectores:', groups.length);
+    groups.forEach(g => console.log(`   - ${g.sector}: ${g.tables.length} mesas`));
+    
+    return groups;
+  }, []);
 
   const handleTimeSlotClick = (timeSlot: number) => {
     // Scroll al horario clickeado (implementación básica)
@@ -120,6 +142,7 @@ export default function Home() {
       {/* Grid de Reservas */}
       <div className="flex-1 overflow-auto">
         <ReservationGrid 
+          groups={sectorGroups}
           reservations={reservations}
           allowPastReservations={allowPastReservations}
           onTogglePastReservations={setAllowPastReservations}
@@ -129,6 +152,8 @@ export default function Home() {
       {/* Panel de Lista de Espera */}
       <WaitlistPanel
         tables={mockTables}
+        sectors={seedSectors}
+        selectedDate={new Date()} // Por ahora usar hoy, luego se puede obtener del grid
         onUpdateEntry={updateWaitlistEntry}
       />
     </div>
