@@ -12,6 +12,25 @@ import type { Reservation } from '../Interfaces/interfaces';
  * - Persistencia en localStorage
  */
 
+const normalizeTableId = (tableId: string): string => {
+  if (!tableId) return tableId;
+
+  const match = /^t(\d+)$/i.exec(tableId.trim());
+  if (match) {
+    return `T${match[1]}`;
+  }
+
+  return tableId;
+};
+
+const normalizeReservation = (reservation: Reservation): Reservation => ({
+  ...reservation,
+  tableId: normalizeTableId(reservation.tableId),
+});
+
+const normalizeReservations = (reservations: Reservation[]): Reservation[] =>
+  reservations.map(normalizeReservation);
+
 interface ReservationState {
   // Estado
   reservations: Reservation[];
@@ -56,12 +75,15 @@ export const useReservationStore = create<ReservationState>()(
         
         // Setters
         setReservations: (reservations) => {
-          set({ reservations }, false, 'setReservations');
+          set({ reservations: normalizeReservations(reservations) }, false, 'setReservations');
         },
         
         addReservation: (reservation) => {
           set((state) => {
-            const newReservations = [...state.reservations, reservation];
+            const newReservations = [
+              ...state.reservations,
+              normalizeReservation(reservation),
+            ];
             const newHistory = state.history.slice(0, state.historyIndex + 1);
             
             return {
@@ -74,9 +96,15 @@ export const useReservationStore = create<ReservationState>()(
         
         updateReservation: (id, updates) => {
           set((state) => {
-            const newReservations = state.reservations.map((r) =>
-              r.id === id ? { ...r, ...updates } : r
-            );
+            const newReservations = state.reservations.map((r) => {
+              if (r.id !== id) return r;
+
+              const updated = { ...r, ...updates } as Reservation;
+              if (updates.tableId) {
+                updated.tableId = normalizeTableId(updates.tableId);
+              }
+              return updated;
+            });
             const newHistory = state.history.slice(0, state.historyIndex + 1);
             
             return {
@@ -204,7 +232,8 @@ export const useReservationStore = create<ReservationState>()(
         },
         
         getReservationsByTable: (tableId) => {
-          return get().reservations.filter((r) => r.tableId === tableId);
+          const normalizedTableId = normalizeTableId(tableId);
+          return get().reservations.filter((r) => r.tableId === normalizedTableId);
         },
         
         getReservationsByStatus: (status) => {
@@ -213,10 +242,25 @@ export const useReservationStore = create<ReservationState>()(
       }),
       {
         name: 'reservation-storage',
+        version: 2,
         partialize: (state) => ({
           reservations: state.reservations,
           // No persistir selección ni historial
         }),
+        migrate: (persistedState, _version) => {
+          if (!persistedState || typeof persistedState !== 'object') {
+            return persistedState;
+          }
+
+          if ('reservations' in persistedState && Array.isArray(persistedState.reservations)) {
+            return {
+              ...persistedState,
+              reservations: normalizeReservations(persistedState.reservations as Reservation[]),
+            };
+          }
+
+          return persistedState;
+        },
       }
     ),
     { name: 'ReservationStore' }

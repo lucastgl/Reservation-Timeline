@@ -862,36 +862,5 @@ Editar `tailwind.config.js` para personalizar:
 
 ---
 
-## 🤝 Contribuir
-
-1. Fork el repositorio
-2. Crear rama feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abrir Pull Request
-
----
-
-## 📝 Licencia
-
-Este proyecto está bajo la licencia MIT. Ver `LICENSE` para más información.
-
----
-
-## 👥 Autores
-
-- **Tu Nombre** - [GitHub](https://github.com/tu-usuario)
-
----
-
-## 🙏 Agradecimientos
-
-- [Heroicons](https://heroicons.com/) por los iconos
-- [dnd-kit](https://dndkit.com/) por el sistema de drag & drop
-- [HeroUI](https://www.heroui.com/) por los componentes de UI
-- [Zustand](https://github.com/pmndrs/zustand) por el state management minimalista
-
----
-
 **Hecho con ❤️ y mucho ☕**
 

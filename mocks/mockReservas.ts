@@ -4,7 +4,7 @@ import type { Reservation } from "../Interfaces/interfaces";
  * Datos mock de reservas para testing del componente ReservationGrid
  * 
  * CONVENCIÓN DE IDs:
- * - Mesas: "t1", "t2", "t3", "t4", "t5"
+ * - Mesas: "T1", "T2", "T3", "T4", "T5"
  * - Reservas: UUID simulados
  * 
  * NOTA: Los horarios usan la fecha actual con horas específicas para testing
@@ -19,11 +19,11 @@ const createDateTime = (hour: number, minute: number = 0): string => {
 
 export const mockReservations: Reservation[] = [
     // ========================================================================
-    // MESA 1 (Interior) - t1
+    // MESA 1 (Main Hall) - T1
     // ========================================================================
     {
         id: "res-001",
-        tableId: "t1",
+        tableId: "T1",
         customer: {
             name: "Juan Pérez",
             phone: "+54 11 1234-5678",
@@ -41,7 +41,7 @@ export const mockReservations: Reservation[] = [
     },
     {
         id: "res-002",
-        tableId: "t1",
+        tableId: "T1",
         customer: {
             name: "María González",
             phone: "+54 11 8765-4321",
@@ -59,11 +59,11 @@ export const mockReservations: Reservation[] = [
     },
 
     // ========================================================================
-    // MESA 2 (Interior) - t2
+    // MESA 2 (Main Hall) - T2
     // ========================================================================
     {
         id: "res-003",
-        tableId: "t2",
+        tableId: "T2",
         customer: {
             name: "Carlos López",
             phone: "+54 11 5555-1234",
@@ -80,7 +80,7 @@ export const mockReservations: Reservation[] = [
     },
     {
         id: "res-004",
-        tableId: "t2",
+        tableId: "T2",
         customer: {
             name: "Ana Martínez",
             phone: "+54 11 9876-5432",
@@ -98,11 +98,11 @@ export const mockReservations: Reservation[] = [
     },
 
     // ========================================================================
-    // MESA 3 (Interior) - t3
+    // MESA 3 (Main Hall) - T3
     // ========================================================================
     {
         id: "res-005",
-        tableId: "t3",
+        tableId: "T3",
         customer: {
             name: "Roberto Sánchez",
             phone: "+54 11 4444-7777",
@@ -119,7 +119,7 @@ export const mockReservations: Reservation[] = [
     },
     {
         id: "res-006",
-        tableId: "t3",
+        tableId: "T3",
         customer: {
             name: "Lucía Fernández",
             phone: "+54 11 3333-6666",
@@ -136,11 +136,11 @@ export const mockReservations: Reservation[] = [
     },
 
     // ========================================================================
-    // MESA 4 (Terraza) - t4
+    // MESA 4 (Terrace) - T4
     // ========================================================================
     {
         id: "res-007",
-        tableId: "t4",
+        tableId: "T4",
         customer: {
             name: "Diego Torres",
             phone: "+54 11 2222-9999",
@@ -157,7 +157,7 @@ export const mockReservations: Reservation[] = [
     },
     {
         id: "res-008",
-        tableId: "t4",
+        tableId: "T4",
         customer: {
             name: "Sofía Ramírez",
             phone: "+54 11 7777-4444",
@@ -174,11 +174,11 @@ export const mockReservations: Reservation[] = [
     },
 
     // ========================================================================
-    // MESA 5 (Terraza) - t5
+    // MESA 5 (Terrace) - T5
     // ========================================================================
     {
         id: "res-009",
-        tableId: "t5",
+        tableId: "T5",
         customer: {
             name: "Pablo Morales",
             phone: "+54 11 8888-2222",
@@ -196,7 +196,7 @@ export const mockReservations: Reservation[] = [
     },
     {
         id: "res-010",
-        tableId: "t5",
+        tableId: "T5",
         customer: {
             name: "Valentina Castro",
             phone: "+54 11 6666-3333",

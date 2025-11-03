@@ -272,7 +272,7 @@ function AddReservationButton() {
   const handleClick = () => {
     addReservation({
       id: '123',
-      tableId: 't1',
+      tableId: 'T1',
       // ...
     });
   };

@@ -39,18 +39,18 @@ function defaultGroups(): SectorGroup[] {
   console.warn('⚠️ ReservationGrid usando grupos por defecto - esto no debería suceder en producción');
   return [
     {
-      sector: "Interior",
+      sector: "Main Hall",
       tables: [
-        { id: "t1", name: "Mesa 1", sector: "Interior" },
-        { id: "t2", name: "Mesa 2", sector: "Interior" },
-        { id: "t3", name: "Mesa 3", sector: "Interior" },
+        { id: "T1", name: "Mesa 1", sector: "Main Hall" },
+        { id: "T2", name: "Mesa 2", sector: "Main Hall" },
+        { id: "T3", name: "Mesa 3", sector: "Main Hall" },
       ],
     },
     {
-      sector: "Terraza",
+      sector: "Terrace",
       tables: [
-        { id: "t4", name: "Mesa 4", sector: "Terraza" },
-        { id: "t5", name: "Mesa 5", sector: "Terraza" },
+        { id: "T4", name: "Mesa 4", sector: "Terrace" },
+        { id: "T5", name: "Mesa 5", sector: "Terrace" },
       ],
     },
   ];
@@ -389,17 +389,16 @@ export default function ReservationGrid({
       />
 
         <div className="relative border border-slate-300 rounded-lg bg-white shadow-lg flex-1 overflow-hidden">
-          <div className="flex h-full">
+          <div
+            className="flex h-full overflow-auto"
+            ref={containerRef}
+          >
             {/* Columna izquierda sticky - Nombres de Mesas/Sectores */}
-            <div className="sticky left-0 z-20 w-56 shrink-0 bg-slate-100 border-r border-slate-300 shadow-md">
+            <div className="sticky left-0 top-0 z-20 w-56 shrink-0 bg-slate-100 border-r border-slate-300 shadow-md">
               <div className="h-12 border-b border-slate-300 flex items-center px-4 font-semibold text-slate-800 bg-slate-200">
                 Mesas / Sectores
               </div>
-
-              <div
-                className="overflow-y-auto"
-                style={{ maxHeight: "calc(100vh - 11rem)" }}
-              >
+              <div>
                 {filteredGroups.map((g) => (
                   <div key={g.sector} className="border-b border-slate-200">
                     <button
@@ -445,10 +444,7 @@ export default function ReservationGrid({
             </div>
 
             {/* Área de timeline - Scrolleable horizontalmente */}
-            <div
-              className="overflow-x-auto overflow-y-hidden relative"
-              ref={containerRef}
-            >
+            <div className="relative flex-1">
               <div style={{ minWidth: totalWidth }} className="relative">
                 {/* Header de horarios */}
                 <div className="sticky top-0 z-10 bg-gradient-to-b from-slate-100 to-slate-50 border-b border-slate-300 shadow-sm">
