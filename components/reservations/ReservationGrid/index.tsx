@@ -394,7 +394,7 @@ export default function ReservationGrid({
             ref={containerRef}
           >
             {/* Columna izquierda sticky - Nombres de Mesas/Sectores */}
-            <div className="sticky left-0 top-0 z-20 w-56 shrink-0 bg-slate-100 border-r border-slate-300 shadow-md">
+            <div className="sticky left-0 top-0 z-50 w-56 shrink-0 bg-slate-100 border-r border-slate-300 shadow-lg">
               <div className="h-12 border-b border-slate-300 flex items-center px-4 font-semibold text-slate-800 bg-slate-200">
                 Mesas / Sectores
               </div>

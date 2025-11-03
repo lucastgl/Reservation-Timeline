@@ -166,7 +166,7 @@ const ReservationCard = memo(({
     const dragStyle = transform ? {
         transform: CSS.Transform.toString(transform),
         opacity: isDragging ? 0.5 : 1,
-        zIndex: isDragging ? 50 : "auto",
+        zIndex: isDragging ? 40 : "auto",
     } : {};
     
     // ========================================================================
